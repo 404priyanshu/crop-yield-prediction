@@ -9,10 +9,16 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+import tempfile
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+
+def get_temp_path(filename: str) -> str:
+    """Get cross-platform temporary file path."""
+    return os.path.join(tempfile.gettempdir(), filename)
 
 
 class TestDataGeneration:
@@ -23,7 +29,7 @@ class TestDataGeneration:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=100, 
-                                         output_path="/tmp/test_dataset.csv")
+                                         output_path=get_temp_path("test_dataset.csv"))
         
         assert df is not None
         assert len(df) == 100
@@ -37,7 +43,7 @@ class TestDataGeneration:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=1000, 
-                                         output_path="/tmp/test_ndvi.csv")
+                                         output_path=get_temp_path("test_ndvi.csv"))
         
         # NDVI should be between -1 and 1
         valid_ndvi = df['ndvi'].dropna()
@@ -49,7 +55,7 @@ class TestDataGeneration:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=1000, 
-                                         output_path="/tmp/test_precip.csv")
+                                         output_path=get_temp_path("test_precip.csv"))
         
         valid_precip = df['precipitation_mm'].dropna()
         assert valid_precip.min() >= 0
@@ -59,7 +65,7 @@ class TestDataGeneration:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=1000, 
-                                         output_path="/tmp/test_crops.csv")
+                                         output_path=get_temp_path("test_crops.csv"))
         
         valid_crops = {'wheat', 'rice', 'corn', 'soybean'}
         assert set(df['crop_type'].unique()).issubset(valid_crops)
@@ -70,7 +76,7 @@ class TestDataGeneration:
         from datetime import datetime
         
         df = generate_synthetic_dataset(n_samples=100, 
-                                         output_path="/tmp/test_dates.csv")
+                                         output_path=get_temp_path("test_dates.csv"))
         
         # Try parsing all dates
         for date_str in df['sowing_date']:
@@ -88,7 +94,7 @@ class TestPreprocessing:
         """Create sample dataset for testing."""
         from src.data_generation import generate_synthetic_dataset
         return generate_synthetic_dataset(n_samples=500, 
-                                          output_path="/tmp/test_preprocess.csv")
+                                          output_path=get_temp_path("test_preprocess.csv"))
     
     def test_impute_missing_values(self, sample_data):
         """Test missing value imputation."""
@@ -167,7 +173,7 @@ class TestModels:
         from src.preprocessing import preprocess_pipeline, prepare_model_data
         
         df = generate_synthetic_dataset(n_samples=500, 
-                                         output_path="/tmp/test_model_data.csv")
+                                         output_path=get_temp_path("test_model_data.csv"))
         df_processed, _, _ = preprocess_pipeline(df)
         X, y = prepare_model_data(df_processed)
         
@@ -244,7 +250,7 @@ class TestDataValidation:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=1000, 
-                                         output_path="/tmp/test_temp.csv")
+                                         output_path=get_temp_path("test_temp.csv"))
         
         valid_temp = df['temperature_c'].dropna()
         
@@ -257,7 +263,7 @@ class TestDataValidation:
         from src.data_generation import generate_synthetic_dataset
         
         df = generate_synthetic_dataset(n_samples=1000, 
-                                         output_path="/tmp/test_soc.csv")
+                                         output_path=get_temp_path("test_soc.csv"))
         
         valid_soc = df['soil_organic_carbon_pct'].dropna()
         

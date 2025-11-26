@@ -186,8 +186,10 @@ def extract_date_features(sowing_date: str, crop_type: str,
     days_to_harvest = crop_settings.get('days_to_harvest', 135)
     
     # Calculate growth stage (assume current observation is mid-season)
-    # Random stage assignment based on typical distribution
-    np.random.seed(hash(sowing_date) % (2**32))
+    # Use deterministic hash for reproducible results across Python runs
+    import hashlib
+    hash_value = int(hashlib.md5(str(sowing_date).encode()).hexdigest(), 16)
+    np.random.seed(hash_value % (2**32))
     random_progress = np.random.uniform(0.1, 0.9)
     
     if random_progress < 0.15:

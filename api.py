@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
+from contextlib import asynccontextmanager
 import numpy as np
 import pandas as pd
 import os
@@ -29,13 +30,28 @@ def load_config(config_path: str = "config.yaml") -> dict:
     return {'api': {'host': '0.0.0.0', 'port': 8000}}
 
 
+# Model manager will be initialized later
+model_manager = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown."""
+    global model_manager
+    model_manager = ModelManager()
+    model_manager.load_models()
+    yield
+    # Cleanup on shutdown (if needed)
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Crop Yield Prediction API",
     description="ML-powered API for predicting crop yields based on environmental factors",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Add CORS middleware
@@ -236,16 +252,6 @@ class ModelManager:
         }
 
 
-# Initialize model manager
-model_manager = ModelManager()
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Load models on startup."""
-    model_manager.load_models()
-
-
 @app.get("/", tags=["Root"])
 async def root():
     """Root endpoint with API info."""
@@ -264,6 +270,9 @@ async def health_check():
     
     Returns API and model status.
     """
+    global model_manager
+    if model_manager is None:
+        model_manager = ModelManager()
     return HealthCheckResponse(
         status="healthy",
         model_loaded=model_manager.loaded,
@@ -280,6 +289,10 @@ async def predict(input_data: PredictionInput):
     Takes crop type, region, sowing date, and environmental factors
     to predict expected yield in tons per hectare.
     """
+    global model_manager
+    if model_manager is None:
+        model_manager = ModelManager()
+        model_manager.load_models()
     try:
         result = model_manager.predict(input_data)
         

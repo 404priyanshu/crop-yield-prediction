@@ -2,7 +2,7 @@
 Model Training Module for Crop Yield Prediction System.
 
 Implements various ML models including Random Forest, XGBoost, SVR, MLP,
-LSTM, CNN, and Ensemble methods for crop yield prediction.
+and Ensemble methods for crop yield prediction.
 """
 
 import numpy as np
@@ -33,22 +33,15 @@ try:
     HAS_XGBOOST = True
 except ImportError:
     HAS_XGBOOST = False
-    print("XGBoost not available. Install with: pip install xgboost")
 
-# TensorFlow/Keras for deep learning
+# TensorFlow/Keras for deep learning (optional)
+HAS_TENSORFLOW = False
 try:
     import tensorflow as tf
     from tensorflow import keras
-    from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import (
-        Dense, LSTM, Dropout, Conv2D, MaxPooling2D, Flatten,
-        BatchNormalization
-    )
-    from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
     HAS_TENSORFLOW = True
 except ImportError:
-    HAS_TENSORFLOW = False
-    print("TensorFlow not available. Install with: pip install tensorflow")
+    pass
 
 
 def load_config(config_path: str = "config.yaml") -> dict:
@@ -98,14 +91,6 @@ def get_default_config() -> dict:
                 'early_stopping': True,
                 'validation_fraction': 0.1,
                 'random_state': 42
-            },
-            'lstm': {
-                'units': 128,
-                'dropout': 0.3,
-                'dense_units': 64,
-                'epochs': 100,
-                'batch_size': 32,
-                'patience': 10
             }
         },
         'training': {
@@ -315,167 +300,6 @@ class MLPModel:
         return self.model.predict(X)
 
 
-class LSTMModel:
-    """LSTM Neural Network for temporal sequence prediction."""
-    
-    def __init__(self, config: dict, input_shape: Tuple[int, int] = (12, 5)):
-        """
-        Initialize LSTM model.
-        
-        Args:
-            config: Model configuration dictionary.
-            input_shape: Shape of input (timesteps, features).
-        """
-        if not HAS_TENSORFLOW:
-            raise ImportError("TensorFlow is not installed")
-        
-        model_config = config.get('models', {}).get('lstm', {})
-        
-        self.units = model_config.get('units', 128)
-        self.dropout = model_config.get('dropout', 0.3)
-        self.dense_units = model_config.get('dense_units', 64)
-        self.epochs = model_config.get('epochs', 100)
-        self.batch_size = model_config.get('batch_size', 32)
-        self.patience = model_config.get('patience', 10)
-        self.input_shape = input_shape
-        
-        self.model = self._build_model()
-        self.name = "LSTM"
-        self.history = None
-    
-    def _build_model(self) -> keras.Model:
-        """Build LSTM model architecture."""
-        model = Sequential([
-            LSTM(self.units, input_shape=self.input_shape, return_sequences=False),
-            Dropout(self.dropout),
-            Dense(self.dense_units, activation='relu'),
-            BatchNormalization(),
-            Dense(1)
-        ])
-        
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
-            loss='mse',
-            metrics=['mae']
-        )
-        
-        return model
-    
-    def fit(self, X: np.ndarray, y: np.ndarray, 
-            validation_data: Optional[Tuple] = None) -> 'LSTMModel':
-        """
-        Train the LSTM model.
-        
-        Args:
-            X: Input features with shape (samples, timesteps, features).
-            y: Target values.
-            validation_data: Optional validation tuple (X_val, y_val).
-        """
-        callbacks = [
-            EarlyStopping(patience=self.patience, restore_best_weights=True),
-            ReduceLROnPlateau(factor=0.5, patience=5, min_lr=1e-6)
-        ]
-        
-        self.history = self.model.fit(
-            X, y,
-            epochs=self.epochs,
-            batch_size=self.batch_size,
-            validation_data=validation_data,
-            callbacks=callbacks,
-            verbose=0
-        )
-        
-        return self
-    
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """Make predictions."""
-        return self.model.predict(X, verbose=0).flatten()
-    
-    def save(self, path: str) -> None:
-        """Save the model."""
-        self.model.save(path)
-    
-    @classmethod
-    def load(cls, path: str) -> 'LSTMModel':
-        """Load a saved model."""
-        instance = cls.__new__(cls)
-        instance.model = keras.models.load_model(path)
-        instance.name = "LSTM"
-        return instance
-
-
-class CNNModel:
-    """CNN model for spatial NDVI pattern recognition."""
-    
-    def __init__(self, config: dict, input_shape: Tuple[int, int, int] = (64, 64, 3)):
-        """
-        Initialize CNN model.
-        
-        Args:
-            config: Model configuration dictionary.
-            input_shape: Shape of input images (height, width, channels).
-        """
-        if not HAS_TENSORFLOW:
-            raise ImportError("TensorFlow is not installed")
-        
-        model_config = config.get('models', {}).get('cnn', {})
-        
-        self.conv1_filters = model_config.get('conv1_filters', 32)
-        self.conv2_filters = model_config.get('conv2_filters', 64)
-        self.kernel_size = model_config.get('kernel_size', 3)
-        self.pool_size = model_config.get('pool_size', 2)
-        self.input_shape = input_shape
-        
-        self.model = self._build_model()
-        self.name = "CNN"
-    
-    def _build_model(self) -> keras.Model:
-        """Build CNN model architecture."""
-        model = Sequential([
-            Conv2D(self.conv1_filters, (self.kernel_size, self.kernel_size),
-                   activation='relu', input_shape=self.input_shape),
-            MaxPooling2D((self.pool_size, self.pool_size)),
-            Conv2D(self.conv2_filters, (self.kernel_size, self.kernel_size),
-                   activation='relu'),
-            MaxPooling2D((self.pool_size, self.pool_size)),
-            Flatten(),
-            Dense(128, activation='relu'),
-            Dropout(0.3),
-            Dense(1)
-        ])
-        
-        model.compile(
-            optimizer='adam',
-            loss='mse',
-            metrics=['mae']
-        )
-        
-        return model
-    
-    def fit(self, X: np.ndarray, y: np.ndarray, 
-            validation_data: Optional[Tuple] = None,
-            epochs: int = 50, batch_size: int = 32) -> 'CNNModel':
-        """Train the CNN model."""
-        callbacks = [
-            EarlyStopping(patience=10, restore_best_weights=True)
-        ]
-        
-        self.model.fit(
-            X, y,
-            epochs=epochs,
-            batch_size=batch_size,
-            validation_data=validation_data,
-            callbacks=callbacks,
-            verbose=0
-        )
-        
-        return self
-    
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """Make predictions."""
-        return self.model.predict(X, verbose=0).flatten()
-
-
 class EnsembleModel:
     """Stacking ensemble model combining multiple base models."""
     
@@ -551,7 +375,7 @@ class ModelTrainer:
         self.feature_names: List[str] = []
     
     def initialize_models(self, 
-                          include_deep_learning: bool = True) -> Dict[str, Any]:
+                          include_deep_learning: bool = False) -> Dict[str, Any]:
         """
         Initialize all models.
         

@@ -1,0 +1,124 @@
+# Crop Yield Prediction System Configuration
+# All hyperparameters and settings are centralized here
+
+random_seed: 42
+data_dir: "./data"
+models_dir: "./models"
+
+# Data Generation Settings
+data_generation:
+  n_samples: 10000
+  crops:
+    - wheat
+    - rice
+    - corn
+    - soybean
+  regions:
+    - north
+    - south
+    - east
+    - west
+    - central
+  ndvi_range: [-1.0, 1.0]
+  precipitation_optimal: [800, 1200]
+  temperature_optimal:
+    wheat: [15, 22]
+    rice: [20, 30]
+    corn: [18, 28]
+    soybean: [20, 30]
+  soil_organic_carbon_range: [0.5, 5.0]
+  
+# Preprocessing Settings
+preprocessing:
+  knn_imputer_neighbors: 5
+  robust_scaler_quantile_range: [25.0, 75.0]
+  ndvi_poly_degree: 2
+  
+# Crop-specific growth settings
+crop_growth:
+  wheat:
+    days_to_harvest: 120
+    optimal_temp: [15, 22]
+    base_yield: 3.5
+  rice:
+    days_to_harvest: 130
+    optimal_temp: [20, 30]
+    base_yield: 4.5
+  corn:
+    days_to_harvest: 140
+    optimal_temp: [18, 28]
+    base_yield: 5.0
+  soybean:
+    days_to_harvest: 150
+    optimal_temp: [20, 30]
+    base_yield: 2.5
+
+# Model Configurations
+models:
+  random_forest:
+    n_estimators: 200
+    max_depth: 20
+    random_state: 42
+    n_jobs: -1
+    
+  xgboost:
+    n_estimators: 200
+    max_depth: 8
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+    
+  svr:
+    kernel: "rbf"
+    C: [0.1, 1, 10]
+    gamma: ["scale", "auto"]
+    
+  mlp:
+    hidden_layer_sizes: [128, 64, 32]
+    activation: "relu"
+    max_iter: 500
+    early_stopping: true
+    validation_fraction: 0.1
+    random_state: 42
+    
+  lstm:
+    units: 128
+    dropout: 0.3
+    dense_units: 64
+    epochs: 100
+    batch_size: 32
+    patience: 10
+    
+  cnn:
+    input_shape: [64, 64, 3]
+    conv1_filters: 32
+    conv2_filters: 64
+    kernel_size: 3
+    pool_size: 2
+    
+  ensemble:
+    meta_learner: "ridge"
+    cv_folds: 5
+
+# Training Settings
+training:
+  test_size: 0.2
+  cv_folds: 5
+  metrics:
+    - rmse
+    - mae
+    - r2
+    - mape
+    
+# API Settings
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  
+# Streamlit Settings
+streamlit:
+  page_title: "Crop Yield Prediction System"
+  page_icon: "🌾"
+  layout: "wide"
